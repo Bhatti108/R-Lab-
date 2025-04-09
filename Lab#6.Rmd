@@ -1,0 +1,61 @@
+---
+title: '"Handling Imbalanced Data  and Feature Engineering"'
+author: '"Muhammad Anas Bhatti"'
+date: "2025-04-09"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Install required packages with CRAN mirror explicitly set
+install.packages(c("ROSE", "recipes", "caret", "FactoMineR", "ggplot2", "factoextra"), repos = "https://cran.r-project.org")
+
+# Load libraries
+library(ROSE)
+library(recipes)
+library(caret)
+library(FactoMineR)
+library(ggplot2)
+library(factoextra)
+
+# Load the dataset
+data <- read.csv("C:/Users/Student/Downloads/IRIS.csv")
+
+# Create binary target variable
+data$binary_target <- ifelse(data$species == "Iris-setosa", 0, 1)
+
+# Balance the dataset
+set.seed(123)
+balanced_data <- ovun.sample(binary_target ~ ., data = data, method = "over")$data
+
+# Feature engineering
+recipe_obj <- recipe(species ~ ., data = data) %>%
+  step_poly(sepal_length, degree = 2)
+
+prepped_data <- prep(recipe_obj, training = data)
+baked_data <- bake(prepped_data, new_data = data)
+
+# Perform PCA
+quant_cols <- sapply(baked_data, is.numeric)
+pca_data <- baked_data[, quant_cols & names(baked_data) != "binary_target"]
+pca_result <- PCA(pca_data, graph = FALSE)
+
+# Visualize PCA results
+fviz_pca_ind(pca_result, 
+             geom = "point", 
+             col.ind = baked_data$binary_target)
+
+# Train Random Forest model
+set.seed(123)
+model <- train(species ~ ., data = balanced_data, method = "rf",
+               trControl = trainControl(method = "cv", number = 5))
+
+```
+
+
+
